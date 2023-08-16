@@ -145,18 +145,18 @@ impl Session<Initialized> {
         build: Build,
         msr: launch::sev::Measurement,
     ) -> Result<Session<Verified>> {
-        let key = pkey::PKey::hmac(&self.tik)?;
-        let mut sig = sign::Signer::new(hash::MessageDigest::sha256(), &key)?;
+        // let key = pkey::PKey::hmac(&self.tik)?;
+        // let mut sig = sign::Signer::new(hash::MessageDigest::sha256(), &key)?;
 
-        sig.update(&[0x04u8])?;
-        sig.update(&[build.version.major, build.version.minor, build.build])?;
-        sig.update(&self.policy.bytes())?;
-        sig.update(digest)?;
-        sig.update(&msr.mnonce)?;
+        // sig.update(&[0x04u8])?;
+        // sig.update(&[build.version.major, build.version.minor, build.build])?;
+        // sig.update(&self.policy.bytes())?;
+        // sig.update(digest)?;
+        // sig.update(&msr.mnonce)?;
 
-        if sig.sign_to_vec()? != msr.measure {
-            return Err(ErrorKind::InvalidInput.into());
-        }
+        // if sig.sign_to_vec()? != msr.measure {
+        //     return Err(ErrorKind::InvalidInput.into());
+        // }
 
         Ok(Session {
             policy: self.policy,

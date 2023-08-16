@@ -50,6 +50,18 @@ impl<'a> LaunchStart<'a> {
             _phantom: PhantomData,
         }
     }
+
+    pub fn with_policy_only(policy: &'a Policy) -> Self {
+        Self {
+            handle: Handle(0), /* platform will generate one for us */
+            policy: *policy,
+            dh_addr: 0,
+            dh_len: 0,
+            session_addr: 0,
+            session_len: 0,
+            _phantom: PhantomData,
+        }
+    }
 }
 
 /// Encrypt guest data with its VEK.

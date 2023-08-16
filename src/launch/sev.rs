@@ -88,6 +88,45 @@ impl<U: AsRawFd, V: AsRawFd> Launcher<New, U, V> {
 
         Ok(next)
     }
+
+    /// Create an encrypted guest context.
+    pub fn start_raw(
+        mut self,
+        policy: &Policy,
+        cert: &crate::certs::sev::sev::cert::Certificate,
+        session: &Session,
+    ) -> Result<Launcher<Started, U, V>> {
+        let mut launch_start = LaunchStart::new(policy, cert, session);
+        let mut cmd = Command::from_mut(&mut self.sev, &mut launch_start);
+        LAUNCH_START
+            .ioctl(&mut self.vm_fd, &mut cmd)
+            .map_err(|e| cmd.encapsulate(e))?;
+
+        let next = Launcher {
+            state: Started(launch_start.into()),
+            vm_fd: self.vm_fd,
+            sev: self.sev,
+        };
+
+        Ok(next)
+    }
+
+    /// Create an encrypted guest context.
+    pub fn start_with_policy_only(mut self, policy: Policy) -> Result<Launcher<Started, U, V>> {
+        let mut launch_start = LaunchStart::with_policy_only(&policy);
+        let mut cmd = Command::from_mut(&mut self.sev, &mut launch_start);
+        LAUNCH_START
+            .ioctl(&mut self.vm_fd, &mut cmd)
+            .map_err(|e| cmd.encapsulate(e))?;
+
+        let next = Launcher {
+            state: Started(launch_start.into()),
+            vm_fd: self.vm_fd,
+            sev: self.sev,
+        };
+
+        Ok(next)
+    }
 }
 
 impl<U: AsRawFd, V: AsRawFd> Launcher<Started, U, V> {
@@ -97,6 +136,25 @@ impl<U: AsRawFd, V: AsRawFd> Launcher<Started, U, V> {
         let mut cmd = Command::from(&mut self.sev, &launch_update_data);
 
         KvmEncRegion::new(data).register(&mut self.vm_fd)?;
+
+        LAUNCH_UPDATE_DATA
+            .ioctl(&mut self.vm_fd, &mut cmd)
+            .map_err(|e| cmd.encapsulate(e))?;
+
+        Ok(())
+    }
+
+    /// Register the encrypted memory region to a virtual machine.
+    /// Corresponds to the `KVM_MEMORY_ENCRYPT_REG_REGION` ioctl.
+    pub fn register_kvm_enc_region(&mut self, data: &[u8]) -> Result<()> {
+        KvmEncRegion::new(data).register(&mut self.vm_fd)?;
+        Ok(())
+    }
+
+    /// Encrypt guest data with its VEK, while the KVM encrypted memory region is not registered.
+    pub fn update_data_without_registration(&mut self, data: &[u8]) -> Result<()> {
+        let launch_update_data = LaunchUpdateData::new(data);
+        let mut cmd = Command::from(&mut self.sev, &launch_update_data);
 
         LAUNCH_UPDATE_DATA
             .ioctl(&mut self.vm_fd, &mut cmd)
