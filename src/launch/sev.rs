@@ -200,6 +200,18 @@ impl<U: AsRawFd, V: AsRawFd> Launcher<Measured, U, V> {
         self.state.1
     }
 
+    /// Get the attestation report.
+    pub fn get_attestation_report(&mut self, mnonce: [u8; 16]) -> Result<Box<AttestationReport>> {
+        let mut ar = MaybeUninit::uninit();
+        let mut attestation = Attestation::new(&mut ar, mnonce);
+        let mut cmd = Command::from_mut(&mut self.sev, &mut attestation);
+        ATTESTATION
+            .ioctl(&mut self.vm_fd, &mut cmd)
+            .map_err(|e| cmd.encapsulate(e))?;
+
+        Ok(Box::new(unsafe { ar.assume_init() }))
+    }
+
     /// Inject a secret into the guest.
     ///
     /// ## Remarks
@@ -413,4 +425,24 @@ impl codicon::Encoder<()> for Measurement {
     fn encode(&self, mut writer: impl Write, _: ()) -> std::io::Result<()> {
         writer.save(self)
     }
+}
+
+///
+#[repr(C)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct AttestationReport {
+    ///
+    pub mnonce: [u8; 16],
+    ///
+    pub digest: [u8; 32],
+    ///
+    pub policy: Policy,
+    ///
+    pub sig_usage: [u8; 4],
+    ///
+    pub sig_algo: [u8; 4],
+    ///
+    reserved: [u8; 4],
+    ///
+    pub sig1: [[u8; 16]; 9],
 }

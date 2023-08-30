@@ -140,3 +140,22 @@ impl<'a> LaunchMeasure<'a> {
 /// ready state.
 #[repr(C)]
 pub struct LaunchFinish;
+
+#[repr(C)]
+pub struct Attestation<'a> {
+    mnonce: [u8; 16],
+    addr: u64,
+    len: u32,
+    _phantom: PhantomData<&'a AttestationReport>,
+}
+
+impl<'a> Attestation<'a> {
+    pub fn new(ar: &'a mut MaybeUninit<AttestationReport>, mnonce: [u8; 16]) -> Self {
+        Self {
+            mnonce,
+            addr: ar.as_mut_ptr() as _,
+            len: size_of_val(ar) as _,
+            _phantom: PhantomData,
+        }
+    }
+}
